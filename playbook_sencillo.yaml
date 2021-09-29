@@ -1,0 +1,69 @@
+- hosts: servidores
+  become: true
+  vars:
+     mysql_root_password: passwd
+  tasks:
+#Crea un usuario nuevo en el equipo y le asigna una contraseña encriptada, una bash y lo asigna a un grupo.
+    - name: "Creación de un usuario con mi nombre"
+      user:
+        name: carlos-ansible
+        password: $y$j9T$szQ2S8r7hmtzs2qsP3tsY0$9dLPmMBVLYwTOlIQlBvMtkihcUc0wW.H5HNMskvgoY9
+        comment: carlos
+        shell: /bin/bash
+        uid: 1040
+        group: audio
+#Descarga un fichero de internet.
+    - name: "Descargar fichero desde url"
+      get_url:
+        url: https://wordpress.org/latest.zip
+        dest: /home/carlos
+#Descarga el descompresor zip para poder proceder a descomprimir el archivo descargado
+    - name: "descargar descompresor zip"
+      apt:
+        name: zip
+        update_cache: yes
+#Descomprime en el diretorio personal el dichero.
+    - name: "descomprimir"
+      ansible.builtin.unarchive:
+        src: /home/carlos/wordpress-5.8.1.zip
+        dest: /home/carlos
+        remote_src: yes
+#Instalar paquete MariaDB.
+    - name: Intalar paquetes necesario para MariaDB
+      apt:
+        name: "{{ packages }}"
+      vars:
+        packages:
+        - git
+        - mariadb-server
+        - python3-pip
+#Instalación del modulo pip PyMySQL para MariaDB
+    - name: "Instalación modulo pip"
+      pip:
+        name: PyMySQL
+#Para que la creación de una base de datos funcione sin errores, tendremos que cambiar la contraseña de root pordefecto a "root".
+#Para ello utilizaremos en MariaDB el comando: "ALTER USER 'root'@'localhost' IDENTIFIED VIA mysql_native_password USING PASSWORD('root');".
+#Creación de la base de datos.
+    - name: Creas base de datos "carlos_wordpress"
+      mysql_db:
+        login_user: root
+        login_password: root
+        name: carlos_wordpress
+        state: present
+#Creación de usuario con privilegio sobre la base de datos creada
+    - name: creación del usuario con permisos
+      mysql_user:
+        login_user: root
+        login_password: root
+        name: carlos
+        password: '*BE1BDEC0AA74B4DCB079943E70528096CCA985F8'
+        encrypted: yes
+        priv: 'carlos_wordpress.*:ALL'
+        state: present 
+#Clonar repositorio en el directorio home.
+    - name: Clonar repositorio de github
+      git:
+        repo: 'https://github.com/josedom24/ansible_ejemplos.git'
+        dest: /home/carlos/pruebas
+        clone: yes
+        update: no
